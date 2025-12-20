@@ -79,5 +79,31 @@ return {
 };
 
   }
+  async getPendingRequests(userId: string) {
+  const pendingRequests = await this.followRepo.find({
+    where: {
+      status: FollowStatus.PENDING,
+      following: { id: userId },
+    },
+    relations: {
+      follower: true,
+    },
+    order: {
+      createdAt: 'DESC',
+    },
+  });
+
+  return pendingRequests.map((follow) => ({
+    followId: follow.id,
+    requestedAt: follow.createdAt,
+    user: {
+      id: follow.follower.id,
+      username: follow.follower.username,
+    },
+  }));
 }
+
+}
+
+
 

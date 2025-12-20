@@ -5,6 +5,8 @@ import { User } from './users/user.entity';
 import { HealthController } from './health.controller';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { FollowsModule } from './follows/follows.module';
+import { Follow } from './follows/follow.entity';
 
 @Module({
   imports: [
@@ -12,11 +14,12 @@ import { UsersModule } from './users/users.module';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [User],
+      entities: [User, Follow],
       synchronize: true,
     }),
     AuthModule,
-    UsersModule
+    UsersModule,
+    FollowsModule,
   ],
   controllers: [HealthController],
 })

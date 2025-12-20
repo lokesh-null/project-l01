@@ -21,4 +21,9 @@ export class FollowsController {
   getPending(@Request() req) {
     return this.followsService.getPendingRequests(req.user.userId);
   }
+  @Get('followers')
+  getFollowers(@Request() req) {
+    return this.followsService.getFollowers(req.user.userId);
+  }
+
 }

@@ -63,22 +63,34 @@ return {
   }
 
   async acceptRequest(followId: string, userId: string) {
-    const follow = await this.followRepo.findOne({
-      where: { id: followId },
-      relations: ['following'],
-    });
+  const follow = await this.followRepo.findOne({
+    where: { id: followId },
+    relations: {
+      following: true,
+    },
+  });
 
-    if (!follow || follow.following.id !== userId) {
-      throw new BadRequestException('Not authorized');
-    }
-
-    follow.status = FollowStatus.ACCEPTED;
-    return {
-  id: follow.id,
-  status: follow.status,
-};
-
+  if (!follow) {
+    throw new BadRequestException('Follow request not found');
   }
+
+  if (follow.following.id !== userId) {
+    throw new BadRequestException('Not authorized');
+  }
+
+  if (follow.status === FollowStatus.ACCEPTED) {
+    return { id: follow.id, status: follow.status };
+  }
+
+  follow.status = FollowStatus.ACCEPTED;
+  await this.followRepo.save(follow);
+
+  return {
+    id: follow.id,
+    status: follow.status,
+  };
+}
+
   async getPendingRequests(userId: string) {
   const pendingRequests = await this.followRepo.find({
     where: {
@@ -102,6 +114,27 @@ return {
     },
   }));
 }
+
+async getFollowers(userId: string) {
+  const followers = await this.followRepo
+    .createQueryBuilder('follow')
+    .innerJoinAndSelect('follow.follower', 'follower')
+    .where('follow.followingId = :userId', { userId })
+    .andWhere('follow.status = :status', {
+      status: FollowStatus.ACCEPTED,
+    })
+    .orderBy('follow.createdAt', 'DESC')
+    .getMany();
+
+  return followers.map((follow) => ({
+    followedAt: follow.createdAt,
+    user: {
+      id: follow.follower.id,
+      username: follow.follower.username,
+    },
+  }));
+}
+
 
 }
 

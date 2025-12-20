@@ -6,12 +6,14 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 import { User } from '../users/user.entity';
+import { Unique } from 'typeorm';
 
 export enum FollowStatus {
   PENDING = 'PENDING',
   ACCEPTED = 'ACCEPTED',
 }
 
+@Unique(['follower', 'following'])
 @Entity()
 export class Follow {
   @PrimaryGeneratedColumn('uuid')

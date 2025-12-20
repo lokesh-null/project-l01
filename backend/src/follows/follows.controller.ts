@@ -25,5 +25,10 @@ export class FollowsController {
   getFollowers(@Request() req) {
     return this.followsService.getFollowers(req.user.userId);
   }
+  @Get('following')
+  getFollowing(@Request() req) {
+    return this.followsService.getFollowing(req.user.userId);
+  }
+
 
 }

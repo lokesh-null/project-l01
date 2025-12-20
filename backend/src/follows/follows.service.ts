@@ -135,6 +135,26 @@ async getFollowers(userId: string) {
   }));
 }
 
+async getFollowing(userId: string) {
+  const following = await this.followRepo
+    .createQueryBuilder('follow')
+    .innerJoinAndSelect('follow.following', 'following')
+    .where('follow.followerId = :userId', { userId })
+    .andWhere('follow.status = :status', {
+      status: FollowStatus.ACCEPTED,
+    })
+    .orderBy('follow.createdAt', 'DESC')
+    .getMany();
+
+  return following.map((follow) => ({
+    followedAt: follow.createdAt,
+    user: {
+      id: follow.following.id,
+      username: follow.following.username,
+    },
+  }));
+}
+
 
 }
 

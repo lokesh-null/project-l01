@@ -17,6 +17,32 @@ export class FollowsController {
   accept(@Param('followId') followId: string, @Request() req) {
     return this.followsService.acceptRequest(followId, req.user.userId);
   }
+
+  @Post('reject/:followId')
+  reject(
+    @Param('followId') followId: string,
+    @Request() req,
+  ) {
+    return this.followsService.rejectRequest(followId, req.user.userId);
+  }
+
+  @Post('unfollow/:userId')
+  unfollow(
+    @Param('userId') userId: string,
+    @Request() req,
+  ) {
+    return this.followsService.unfollow(userId, req.user.userId);
+  }
+
+  @Post('remove/:userId')
+  removeFollower(
+    @Param('userId') userId: string,
+    @Request() req,
+  ) {
+    return this.followsService.removeFollower(userId, req.user.userId);
+  }
+
+
   @Get('pending')
   getPending(@Request() req) {
     return this.followsService.getPendingRequests(req.user.userId);

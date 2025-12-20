@@ -155,6 +155,80 @@ async getFollowing(userId: string) {
   }));
 }
 
+async rejectRequest(followId: string, userId: string) {
+  const follow = await this.followRepo.findOne({
+    where: { id: followId },
+    relations: {
+      following: true,
+    },
+  });
+
+  if (!follow) {
+    throw new BadRequestException('Follow request not found');
+  }
+
+  if (follow.following.id !== userId) {
+    throw new BadRequestException('Not authorized to reject this request');
+  }
+
+  if (follow.status !== FollowStatus.PENDING) {
+    throw new BadRequestException('Only pending requests can be rejected');
+  }
+
+  await this.followRepo.remove(follow);
+
+  return {
+    message: 'Follow request rejected',
+  };
+}
+
+async unfollow(targetUserId: string, userId: string) {
+  const follow = await this.followRepo.findOne({
+    where: {
+      status: FollowStatus.ACCEPTED,
+    },
+    relations: {
+      follower: true,
+      following: true,
+    },
+  });
+
+  if (!follow) {
+    throw new BadRequestException('Follow relationship not found');
+  }
+
+  if (follow.follower.id !== userId || follow.following.id !== targetUserId) {
+    throw new BadRequestException('Not authorized to unfollow');
+  }
+
+  await this.followRepo.remove(follow);
+
+  return { message: 'Unfollowed successfully' };
+}
+
+async removeFollower(targetUserId: string, userId: string) {
+  const follow = await this.followRepo.findOne({
+    where: {
+      status: FollowStatus.ACCEPTED,
+    },
+    relations: {
+      follower: true,
+      following: true,
+    },
+  });
+
+  if (!follow) {
+    throw new BadRequestException('Follower relationship not found');
+  }
+
+  if (follow.following.id !== userId || follow.follower.id !== targetUserId) {
+    throw new BadRequestException('Not authorized to remove follower');
+  }
+
+  await this.followRepo.remove(follow);
+
+  return { message: 'Follower removed successfully' };
+}
 
 }
 

@@ -1,11 +1,17 @@
 import {
   WebSocketGateway,
+  WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets';
+import { Server } from 'socket.io'
 import { Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { PresenceService } from './presence.service';
+import { ChatService } from './chat.service';
 @WebSocketGateway({
   cors: {
     origin: '*',
@@ -14,7 +20,10 @@ import { PresenceService } from './presence.service';
 export class ChatGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
-  constructor(private readonly jwtService: JwtService, private readonly presenceService: PresenceService,) {}
+  constructor(private readonly jwtService: JwtService, 
+    private readonly presenceService: PresenceService,
+    private readonly chatService: ChatService,
+  ) {}
   
   async handleConnection(client: Socket) {
     try {
@@ -46,5 +55,47 @@ export class ChatGateway
       console.log(`🔴 ${user.email} went OFFLINE`);
     }
   }
+  @WebSocketServer()
+  server: Server;
+
+  @SubscribeMessage('private_message')
+  async handlePrivateMessage(
+    @MessageBody()
+    payload: { toUserId: string; message: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const fromUser = client.data.user;
+
+    if (!fromUser) {
+      return;
+    }
+
+  // 1️⃣ Permission check
+  const canChat = await this.chatService.canChat(
+    fromUser.userId,
+    payload.toUserId,
+  );
+
+  if (!canChat) {
+    client.emit('error', 'Not allowed to chat with this user');
+    return;
+  }
+
+  // 2️⃣ Receiver online?
+  const targetSocketId =
+    this.presenceService.getSocketId(payload.toUserId);
+
+  if (!targetSocketId) {
+    client.emit('error', 'User is offline');
+    return;
+  }
+
+  // 3️⃣ Deliver message
+  this.server.to(targetSocketId).emit('private_message', {
+    fromUserId: fromUser.userId,
+    message: payload.message,
+  });
+}
+
 
 }

@@ -1,12 +1,20 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatGateway } from './chat.gateway';
-import { AuthModule } from '../auth/auth.module';
 import { PresenceService } from './presence.service';
+import { ChatService } from './chat.service';
+import { Follow } from '../follows/follow.entity';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
-    AuthModule, // 🔴 reuse JwtService config
+    AuthModule,
+    TypeOrmModule.forFeature([Follow]),
   ],
-  providers: [ChatGateway, PresenceService],
+  providers: [
+    ChatGateway,
+    PresenceService,
+    ChatService,
+  ],
 })
 export class ChatModule {}

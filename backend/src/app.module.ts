@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { FollowsModule } from './follows/follows.module';
 import { Follow } from './follows/follow.entity';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { Follow } from './follows/follow.entity';
     AuthModule,
     UsersModule,
     FollowsModule,
+    ChatModule,
   ],
   controllers: [HealthController],
 })

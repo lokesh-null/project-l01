@@ -108,5 +108,68 @@ export class ChatService {
     return rows;
   }
 
+  async getConversations(userId: string) {
+  // 1️⃣ Fetch all messages involving the user
+  const messages = await this.messageRepo.find({
+    where: [
+      { sender: { id: userId } },
+      { receiver: { id: userId } },
+    ],
+    relations: ['sender', 'receiver'],
+    order: { createdAt: 'DESC' },
+  });
+
+  const conversationMap = new Map<
+    string,
+    {
+      user: { id: string; username: string };
+      lastMessage: {
+        content: string;
+        createdAt: Date;
+        status: string;
+      };
+      unreadCount: number;
+    }
+  >();
+
+  for (const msg of messages) {
+    const isSender = msg.sender.id === userId;
+    const otherUser = isSender ? msg.receiver : msg.sender;
+
+    // If conversation already processed, skip
+    if (conversationMap.has(otherUser.id)) continue;
+
+    // Count unread messages from this user
+    const unreadCount = await this.messageRepo
+  .createQueryBuilder('message')
+  .where('message.senderId = :senderId', {
+    senderId: otherUser.id,
+  })
+  .andWhere('message.receiverId = :receiverId', {
+    receiverId: userId,
+  })
+  .andWhere('message.status = :status', {
+    status: 'DELIVERED',
+  })
+  .getCount();
+
+
+    conversationMap.set(otherUser.id, {
+      user: {
+        id: otherUser.id,
+        username: otherUser.username,
+      },
+      lastMessage: {
+        content: msg.content,
+        createdAt: msg.createdAt,
+        status: msg.status,
+      },
+      unreadCount,
+    });
+  }
+
+  return Array.from(conversationMap.values());
+}
+
 
 }

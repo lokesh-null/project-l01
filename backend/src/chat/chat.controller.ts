@@ -27,7 +27,12 @@ export class ChatController {
     }));
   }
 
-
+  @Get('conversations/list')
+async getConversations(
+  @CurrentUser() user: { userId: string },
+) {
+  return this.chatService.getConversations(user.userId);
+}
 
   @Get(':userId')
   async getChatHistory(

@@ -5,12 +5,15 @@ import { PresenceService } from './presence.service';
 import { ChatService } from './chat.service';
 import { Follow } from '../follows/follow.entity';
 import { AuthModule } from '../auth/auth.module';
+import { Message } from './message.entity';
+import { ChatController } from './chat.controller';
 
 @Module({
   imports: [
     AuthModule,
-    TypeOrmModule.forFeature([Follow]),
+    TypeOrmModule.forFeature([Follow, Message]),
   ],
+  controllers: [ChatController],
   providers: [
     ChatGateway,
     PresenceService,

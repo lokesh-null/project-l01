@@ -12,6 +12,8 @@ import { Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { PresenceService } from './presence.service';
 import { ChatService } from './chat.service';
+import { User } from '../users/user.entity';
+
 @WebSocketGateway({
   cors: {
     origin: '*',
@@ -90,11 +92,19 @@ export class ChatGateway
     return;
   }
 
-  // 3️⃣ Deliver message
+  // 3️⃣ Persist message
+  await this.chatService.saveMessage(
+    { id: fromUser.userId } as User,
+    { id: payload.toUserId } as User,
+    payload.message,
+  );
+
+  // 4️⃣ Deliver message
   this.server.to(targetSocketId).emit('private_message', {
     fromUserId: fromUser.userId,
     message: payload.message,
   });
+
 }
 
 

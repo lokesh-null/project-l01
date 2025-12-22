@@ -7,9 +7,10 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
-import { Server } from 'socket.io'
-import { Socket } from 'socket.io';
+
+import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
+
 import { PresenceService } from './presence.service';
 import { ChatService } from './chat.service';
 import { User } from '../users/user.entity';
@@ -22,19 +23,31 @@ import { User } from '../users/user.entity';
 export class ChatGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
-  constructor(private readonly jwtService: JwtService, 
+  @WebSocketServer()
+  server: Server;
+
+  constructor(
+    private readonly jwtService: JwtService,
     private readonly presenceService: PresenceService,
     private readonly chatService: ChatService,
   ) {}
-  
+
+  // ===============================
+  // CONNECTION / DISCONNECTION
+  // ===============================
+
   async handleConnection(client: Socket) {
     try {
       const token =
         client.handshake.auth?.token ||
         client.handshake.headers.authorization?.split(' ')[1];
 
+      if (!token) {
+        client.disconnect();
+        return;
+      }
+
       const payload = await this.jwtService.verifyAsync(token);
-      
 
       client.data.user = {
         userId: payload.sub,
@@ -49,7 +62,6 @@ export class ChatGateway
     }
   }
 
-
   handleDisconnect(client: Socket) {
     const user = client.data.user;
     if (user) {
@@ -57,8 +69,10 @@ export class ChatGateway
       console.log(`🔴 ${user.email} went OFFLINE`);
     }
   }
-  @WebSocketServer()
-  server: Server;
+
+  // ===============================
+  // PRIVATE MESSAGE (SENT → DELIVERED)
+  // ===============================
 
   @SubscribeMessage('private_message')
   async handlePrivateMessage(
@@ -67,45 +81,73 @@ export class ChatGateway
     @ConnectedSocket() client: Socket,
   ) {
     const fromUser = client.data.user;
+    if (!fromUser) return;
 
-    if (!fromUser) {
+    // 1️⃣ Permission check
+    const canChat = await this.chatService.canChat(
+      fromUser.userId,
+      payload.toUserId,
+    );
+
+    if (!canChat) {
+      client.emit('error', 'Not allowed to chat with this user');
       return;
     }
 
-  // 1️⃣ Permission check
-  const canChat = await this.chatService.canChat(
-    fromUser.userId,
-    payload.toUserId,
-  );
+    // 2️⃣ Receiver online?
+    const targetSocketId =
+      this.presenceService.getSocketId(payload.toUserId);
 
-  if (!canChat) {
-    client.emit('error', 'Not allowed to chat with this user');
-    return;
+    if (!targetSocketId) {
+      client.emit('error', 'User is offline');
+      return;
+    }
+
+    // 3️⃣ Save message (SENT)
+    const savedMessage = await this.chatService.saveMessage(
+      { id: fromUser.userId } as User,
+      { id: payload.toUserId } as User,
+      payload.message,
+    );
+
+    // 4️⃣ Deliver message to receiver
+    this.server.to(targetSocketId).emit('private_message', {
+      id: savedMessage.id,
+      fromUserId: fromUser.userId,
+      message: savedMessage.content,
+      status: savedMessage.status,
+      createdAt: savedMessage.createdAt,
+    });
+
+    // 5️⃣ Mark as DELIVERED
+    await this.chatService.markDelivered(savedMessage.id);
+
+    // 6️⃣ Notify sender
+    client.emit('message_status', {
+      messageId: savedMessage.id,
+      status: 'DELIVERED',
+    });
   }
 
-  // 2️⃣ Receiver online?
-  const targetSocketId =
-    this.presenceService.getSocketId(payload.toUserId);
+  // ===============================
+  // READ RECEIPT (DELIVERED → READ)
+  // ===============================
 
-  if (!targetSocketId) {
-    client.emit('error', 'User is offline');
-    return;
+  @SubscribeMessage('message_read')
+  async handleMessageRead(
+    @MessageBody() payload: { messageId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const user = client.data.user;
+    if (!user) return;
+
+    // 1️⃣ Update DB
+    await this.chatService.markRead(payload.messageId);
+
+    // 2️⃣ Notify sender (simple global emit for now)
+    this.server.emit('message_status', {
+      messageId: payload.messageId,
+      status: 'READ',
+    });
   }
-
-  // 3️⃣ Persist message
-  await this.chatService.saveMessage(
-    { id: fromUser.userId } as User,
-    { id: payload.toUserId } as User,
-    payload.message,
-  );
-
-  // 4️⃣ Deliver message
-  this.server.to(targetSocketId).emit('private_message', {
-    fromUserId: fromUser.userId,
-    message: payload.message,
-  });
-
-}
-
-
 }

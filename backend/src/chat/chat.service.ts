@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Follow, FollowStatus } from '../follows/follow.entity';
 import { Message } from './message.entity';
 import { User } from '../users/user.entity';
+import { MessageStatus } from './message.entity';
 
 @Injectable()
 export class ChatService {
@@ -40,10 +41,28 @@ export class ChatService {
       sender,
       receiver,
       content,
+      status: MessageStatus.SENT
     });
 
     return this.messageRepo.save(message);
   }
+
+  async markDelivered(messageId: string) {
+    await this.messageRepo.update(
+      { id: messageId },
+      { status: MessageStatus.DELIVERED },
+    );
+  }
+
+
+  async markRead(messageId: string) {
+    await this.messageRepo.update(
+      { id: messageId },
+      { status: MessageStatus.READ },
+    );
+  }
+
+
   async getConversation(
     userA: string,
     userB: string,

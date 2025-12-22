@@ -47,26 +47,34 @@ export class ChatService {
   async getConversation(
     userA: string,
     userB: string,
-    limit = 50,
-  ) {
-    return this.messageRepo.find({
-      where: [
-        {
-          sender: { id: userA },
-          receiver: { id: userB },
-        },
-        {
-          sender: { id: userB },
-          receiver: { id: userA },
-        },
-      ],
-      order: {
-        createdAt: 'ASC',
-      },
-      take: limit,
-      relations: ['sender', 'receiver'],
-    });
-  }
+    limit = 30,
+    before?: string,
+    ) {
+    const qb = this.messageRepo
+        .createQueryBuilder('message')
+        .leftJoinAndSelect('message.sender', 'sender')
+        .leftJoinAndSelect('message.receiver', 'receiver')
+        .where(
+        `(sender.id = :userA AND receiver.id = :userB)
+        OR
+        (sender.id = :userB AND receiver.id = :userA)`,
+        { userA, userB },
+        )
+        .orderBy('message.createdAt', 'DESC')
+        .take(limit);
+
+    if (before) {
+        qb.andWhere(
+        'message.createdAt < (SELECT "createdAt" FROM message WHERE id = :before)',
+        { before },
+        );
+    }
+
+    const messages = await qb.getMany();
+
+    // Return oldest → newest for UI
+    return messages.reverse();
+  } 
 
 
 }

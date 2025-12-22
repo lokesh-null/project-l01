@@ -20,6 +20,7 @@ export class ChatController {
     @CurrentUser() user: { userId: string },
     @Param('userId') otherUserId: string,
     @Query('limit') limit?: string,
+    @Query('before') before?: string,
   ) {
     const canChat = await this.chatService.canChat(
       user.userId,
@@ -35,7 +36,7 @@ export class ChatController {
     const messages = await this.chatService.getConversation(
       user.userId,
       otherUserId,
-      limit ? Number(limit) : 50,
+      limit ? Number(limit) : 30,
     );
 
     return messages.map(msg => ({

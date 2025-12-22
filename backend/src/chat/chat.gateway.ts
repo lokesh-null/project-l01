@@ -150,4 +150,48 @@ export class ChatGateway
       status: 'READ',
     });
   }
+
+  @SubscribeMessage('typing_start')
+async handleTypingStart(
+  @MessageBody() payload: { toUserId: string },
+  @ConnectedSocket() client: Socket,
+) {
+  const fromUser = client.data.user;
+  if (!fromUser) return;
+
+  // Permission check
+  const canChat = await this.chatService.canChat(
+    fromUser.userId,
+    payload.toUserId,
+  );
+  if (!canChat) return;
+
+  const targetSocketId =
+    this.presenceService.getSocketId(payload.toUserId);
+
+  if (!targetSocketId) return;
+
+  this.server.to(targetSocketId).emit('typing_start', {
+    fromUserId: fromUser.userId,
+  });
+}
+
+@SubscribeMessage('typing_stop')
+async handleTypingStop(
+  @MessageBody() payload: { toUserId: string },
+  @ConnectedSocket() client: Socket,
+) {
+  const fromUser = client.data.user;
+  if (!fromUser) return;
+
+  const targetSocketId =
+    this.presenceService.getSocketId(payload.toUserId);
+
+  if (!targetSocketId) return;
+
+  this.server.to(targetSocketId).emit('typing_stop', {
+    fromUserId: fromUser.userId,
+  });
+}
+
 }

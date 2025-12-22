@@ -95,5 +95,18 @@ export class ChatService {
     return messages.reverse();
   } 
 
+  async getUnreadCounts(userId: string) {
+    const rows = await this.messageRepo
+      .createQueryBuilder('message')
+      .select('message.senderId', 'senderId')
+      .addSelect('COUNT(message.id)', 'count')
+      .where('message.receiverId = :userId', { userId })
+      .andWhere('message.status != :status', { status: 'READ' })
+      .groupBy('message.senderId')
+      .getRawMany();
+
+    return rows;
+  }
+
 
 }

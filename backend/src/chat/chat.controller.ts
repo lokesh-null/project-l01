@@ -15,6 +15,20 @@ import { CurrentUser } from '../auth/current-user.decorator';
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
+  @Get('unread/counts')
+  async getUnreadCounts(
+    @CurrentUser() user: { userId: string },
+  ) {
+    const counts = await this.chatService.getUnreadCounts(user.userId);
+
+    return counts.map(row => ({
+      fromUserId: row.senderId,
+      unreadCount: Number(row.count),
+    }));
+  }
+
+
+
   @Get(':userId')
   async getChatHistory(
     @CurrentUser() user: { userId: string },

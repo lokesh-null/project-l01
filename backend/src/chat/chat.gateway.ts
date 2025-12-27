@@ -122,6 +122,33 @@ export class ChatGateway
     // 5️⃣ Mark as DELIVERED
     await this.chatService.markDelivered(savedMessage.id);
 
+    // 🔔 Real-time unread count update for receiver
+const receiverSocketId =
+  this.presenceService.getSocketId(payload.toUserId);
+
+if (receiverSocketId) {
+  const unreadCounts =
+    await this.chatService.getUnreadCountsForUser(payload.toUserId);
+
+  this.server
+    .to(receiverSocketId)
+    .emit('unread_counts_update', unreadCounts);
+}
+
+// 🔔 Real-time unread count update for reader
+const readerId = client.data.user.userId;
+const readerSocketId =
+  this.presenceService.getSocketId(readerId);
+
+if (readerSocketId) {
+  const unreadCounts =
+    await this.chatService.getUnreadCountsForUser(readerId);
+
+  this.server
+    .to(readerSocketId)
+    .emit('unread_counts_update', unreadCounts);
+}
+
     // 6️⃣ Notify sender
     client.emit('message_status', {
       messageId: savedMessage.id,

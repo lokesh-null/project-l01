@@ -171,5 +171,21 @@ export class ChatService {
   return Array.from(conversationMap.values());
 }
 
+async getUnreadCountsForUser(userId: string) {
+  const rows = await this.messageRepo
+    .createQueryBuilder('message')
+    .select('message.senderId', 'senderId')
+    .addSelect('COUNT(message.id)', 'count')
+    .where('message.receiverId = :userId', { userId })
+    .andWhere('message.status != :status', { status: 'READ' })
+    .groupBy('message.senderId')
+    .getRawMany();
+
+  return rows.map(row => ({
+    fromUserId: row.senderId,
+    unreadCount: Number(row.count),
+  }));
+}
+
 
 }

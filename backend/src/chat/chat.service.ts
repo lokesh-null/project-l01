@@ -187,5 +187,44 @@ async getUnreadCountsForUser(userId: string) {
   }));
 }
 
+async deleteForMe(messageId: string, userId: string) {
+  const message = await this.messageRepo.findOne({
+    where: { id: messageId },
+  });
+
+  if (!message) {
+    throw new Error('Message not found');
+  }
+
+  if (!message.deletedFor.includes(userId)) {
+    message.deletedFor.push(userId);
+    await this.messageRepo.save(message);
+  }
+}
+
+async unsendMessage(messageId: string, userId: string) {
+  const message = await this.messageRepo.findOne({
+    where: { id: messageId },
+    relations: ['sender', 'receiver'],
+  });
+
+  if (!message) {
+    throw new Error('Message not found');
+  }
+
+  if (message.sender.id !== userId) {
+    throw new Error('Not allowed to unsend this message');
+  }
+
+  message.deletedFor = [
+    message.sender.id,
+    message.receiver.id,
+  ];
+
+  await this.messageRepo.save(message);
+
+  return message;
+}
+
 
 }

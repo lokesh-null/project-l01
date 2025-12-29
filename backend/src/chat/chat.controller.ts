@@ -52,11 +52,16 @@ async getConversations(
       );
     }
 
+    
     const messages = await this.chatService.getConversation(
       user.userId,
       otherUserId,
       limit ? Number(limit) : 30,
     );
+
+    const visibleMessages = messages.filter(
+  msg => !msg.deletedFor.includes(user.userId),
+);
 
     return messages.map(msg => ({
       id: msg.id,

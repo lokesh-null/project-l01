@@ -221,4 +221,49 @@ async handleTypingStop(
   });
 }
 
+@SubscribeMessage('message_delete_for_me')
+async handleDeleteForMe(
+  @MessageBody() payload: { messageId: string },
+  @ConnectedSocket() client: Socket,
+) {
+  const user = client.data.user;
+  if (!user) return;
+
+  try {
+    await this.chatService.deleteForMe(
+      payload.messageId,
+      user.userId,
+    );
+
+    client.emit('message_deleted_for_me', {
+      messageId: payload.messageId,
+    });
+  } catch (err) {
+    client.emit('error', err.message);
+  }
+}
+
+@SubscribeMessage('message_unsend')
+async handleUnsend(
+  @MessageBody() payload: { messageId: string },
+  @ConnectedSocket() client: Socket,
+) {
+  const user = client.data.user;
+  if (!user) return;
+
+  try {
+    const message = await this.chatService.unsendMessage(
+      payload.messageId,
+      user.userId,
+    );
+
+    this.server.emit('message_unsent', {
+      messageId: message.id,
+    });
+  } catch (err) {
+    client.emit('error', err.message);
+  }
+}
+
+
 }

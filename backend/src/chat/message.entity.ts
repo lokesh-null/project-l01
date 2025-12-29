@@ -28,6 +28,10 @@ export class Message {
   @Column()
   content: string;
 
+  @Column('uuid', { array: true, default: () => 'ARRAY[]::uuid[]' })
+deletedFor: string[];
+
+
   @Column({
   type: 'enum',
   enum: MessageStatus,
